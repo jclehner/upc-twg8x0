@@ -5,8 +5,7 @@ password are derived from the device's serial number.
 However, for the TWG850-4U, there are around 8000-12000
 possible WPA2 keys for each UPC%06d network, as opposed
 to ~20 keys in the TC7200.U - still good enough for
-a dictionary attack though: `aircrack-ng` does it in less than 5 seconds
-on a Core i5-6600.
+a dictionary attack though: `aircrack-ng` takes less than 5 seconds.
 
 The WiFi channel number is also derived from the serial
 number, but in such a way that it's guaranteed to be either
