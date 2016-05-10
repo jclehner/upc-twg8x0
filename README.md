@@ -1,7 +1,5 @@
 # TWG850-4U UPC%06d WPA2 keys
 
-WPA2 key-recovery for Thomson TWG850-4U UPC%06d networks.
-
 Same as in the [Technicolor TC7200.U](https://haxx.in/upc-wifi/), the Wi-Fi SSID and
 password are derived from the device's serial number.
 However, for the TWG850-4U, there are around 8000-12000
