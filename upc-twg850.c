@@ -293,6 +293,29 @@ uint32_t generate_upc_channel_twg850(uint32_t *sn)
 	return 1;
 }
 
+uint32_t generate_upc_channel_twg870(uint32_t *sn)
+{
+	uint32_t a0, v1, v0;
+
+	a0 = sn[4];
+	v0 = a0 / 3;
+	v1 = v0 << 1;
+	v1 += v0;
+	a0 -= v1;
+	a0 <<= 2;
+
+	switch (a0 / 4) {
+		case 0:
+			return 1;
+		case 1:
+			return 6;
+		case 2:
+			return 11;
+		default:
+			return 0;
+	}
+}
+
 static uint32_t (*generate_upc_ssid)(uint32_t *) = NULL;
 static uint32_t (*generate_upc_channel)(uint32_t *) = NULL;
 static const char *ssid_fmt = NULL;
@@ -335,8 +358,7 @@ int main(int argc, char **argv)
 		ssid_fmt = "UPC%07d  ";
 		sn0 = sn0_twg870;
 		generate_upc_ssid = &generate_upc_ssid_twg870;
-		// FIXME
-		generate_upc_channel = &generate_upc_channel_twg850;
+		generate_upc_channel = &generate_upc_channel_twg870;
 	} else {
 		fprintf(stderr, "error: unknown device %s\n", argv[1]);
 		return 1;
