@@ -317,18 +317,6 @@ static void print(uint32_t *sn, uint32_t ssid, uint32_t ch)
 	printf("\n");
 }
 
-uint32_t mult(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t e)
-{
-	uint32_t r = 1;
-	if (a) r *= a;
-	if (b) r *= b;
-	if (c) r *= c;
-	if (d) r *= d;
-	if (e) r *= e;
-
-	return r;
-}
-
 int main(int argc, char **argv)
 {
 	if (argc != 3 && argc != 4) {
