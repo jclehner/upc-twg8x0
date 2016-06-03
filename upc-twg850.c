@@ -112,13 +112,9 @@ void generate_upc_psk(uint32_t *sn, char *psk)
 uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 {
 	uint32_t ssid = (sn[2] << 3) + sn[2];
-	printf("ssid: %d", ssid);
 	ssid += (sn[3] << 10) - sn[3];
-	printf(" -> %d", ssid);
 	ssid += (sn[1] * sn[1]) + ((sn[0] << 1) + sn[0]);
-	printf(" -> %d", ssid);
 	ssid += 1 + ((sn[4] << 1) + sn[4]);
-	printf(" -> %d", ssid);
 
 	uint32_t v1 = ssid / 1000000;
 	uint32_t v0 = (((v1 << 5) - v1) << 9) + v1;
