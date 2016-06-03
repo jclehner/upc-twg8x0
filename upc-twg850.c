@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-uint32_t sra(int32_t x, uint32_t n)
+static uint32_t sra(int32_t x, uint32_t n)
 {
 	if (x < 0 && n > 0) {
 		return x >> n | ~(~0U >> n);
@@ -45,13 +45,13 @@ uint32_t sra(int32_t x, uint32_t n)
 	return x >> n;
 }
 
-uint32_t mult_mfhi(uint64_t a, uint64_t b)
+static uint32_t mult_mfhi(uint64_t a, uint64_t b)
 {
 	uint64_t r = a * b;
 	return (r & 0xffffffff00000000ull) >> 32;
 }
 
-uint32_t to_u32(char *s, size_t beg, size_t len)
+static uint32_t to_u32(char *s, size_t beg, size_t len)
 {
 	char c, *end;
 	end	= &s[beg + len];
@@ -64,7 +64,7 @@ uint32_t to_u32(char *s, size_t beg, size_t len)
 }
 
 // "11111233455555" -> { 11111, 2, 33, 4, 55555 }
-void split_sn(char *s, uint32_t *sn)
+static void split_sn(char *s, uint32_t *sn)
 {
 	sn[0] = to_u32(s, 0, 5);
 	sn[1] = to_u32(s, 5, 1);
@@ -73,7 +73,7 @@ void split_sn(char *s, uint32_t *sn)
 	sn[4] = to_u32(s, 9, 5);
 }
 
-void generate_upc_psk_source(uint32_t *sn, char *base)
+static void generate_upc_psk_source(uint32_t *sn, char *base)
 {
 	uint32_t v0, v1, a2;
 
@@ -90,7 +90,7 @@ void generate_upc_psk_source(uint32_t *sn, char *base)
 	snprintf(base, 9, "%08d", a2);
 }
 
-void generate_upc_psk(uint32_t *sn, char *psk)
+static void generate_upc_psk(uint32_t *sn, char *psk)
 {
 	char base[9];
 	generate_upc_psk_source(sn, base);
@@ -109,7 +109,7 @@ void generate_upc_psk(uint32_t *sn, char *psk)
 	} while (++i < 8);
 }
 
-uint32_t generate_upc_ssid_twg850(uint32_t *sn)
+static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 {
 	uint32_t ssid = (sn[2] << 3) + sn[2];
 	ssid += (sn[3] << 10) - sn[3];
@@ -124,7 +124,7 @@ uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 	return ssid;
 }
 
-uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
+static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 {
 	uint32_t v0, v1, a0, a1, a2;
 	uint32_t s0 = 4;
@@ -217,7 +217,7 @@ uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 	return a2;
 }
 
-uint32_t generate_upc_ssid_twg870(uint32_t *sn)
+static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 {
 	uint32_t v0, v1, a0, a1, a2, s0;
 	uint32_t s1 = 0;
@@ -276,7 +276,7 @@ uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 	return s0;
 }
 
-uint32_t generate_upc_channel_twg850(uint32_t *sn)
+static uint32_t generate_upc_channel_twg850(uint32_t *sn)
 {
 	uint32_t v0, v1, a0 = sn[4];
 	v0 = a0 / 3;
@@ -293,7 +293,7 @@ uint32_t generate_upc_channel_twg850(uint32_t *sn)
 	return 1;
 }
 
-uint32_t generate_upc_channel_twg870(uint32_t *sn)
+static uint32_t generate_upc_channel_twg870(uint32_t *sn)
 {
 	uint32_t a0, v1, v0;
 
@@ -340,11 +340,16 @@ static void print(uint32_t *sn, uint32_t ssid, uint32_t ch)
 	printf("\n");
 }
 
+static void usage()
+{
+	fprintf(stderr, "usage: upc-twg8x0 <device> <<serial> | <ssid> [<channel>]>\n");
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	if (argc != 3 && argc != 4) {
-		fprintf(stderr, "usage: upc-twg8x0 <device> <<serial> | <ssid> [<channel>]>\n");
-		return 1;
+		usage();
 	}
 
 	uint32_t *sn0 = NULL;
@@ -397,6 +402,8 @@ int main(int argc, char **argv)
 		split_sn(argv[2], sn);
 		ssid = generate_upc_ssid(sn);
 		print(sn, ssid, 0);
+	} else {
+		usage();
 	}
 
 	return 0;
