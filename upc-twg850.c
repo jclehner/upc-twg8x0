@@ -369,8 +369,8 @@ int main(int argc, char **argv)
 	uint32_t ch = 0;
 
 	if (sscanf(argv[2], "UPC%d", &ssid) == 1) {
-		if (argc == 3) {
-			ch = atoi(argv[2]);
+		if (argc == 4) {
+			ch = atoi(argv[3]);
 		}
 
 		unsigned i = 0;
