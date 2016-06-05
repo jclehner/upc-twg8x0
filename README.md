@@ -1,4 +1,4 @@
-# TWG850-4U UPC%06d WPA2 keys
+# TWG850/TWG870 WPA2 keys
 
 Same as in the [Technicolor TC7200.U](https://haxx.in/upc-wifi/), the Wi-Fi SSID and
 password are derived from the device's serial number.
@@ -14,18 +14,19 @@ generates channel 11). The distribution is 1/3 channel 1,
 and 2/3 channel 6. The channel number printed on the bottom
 label is _not_ used!
 
-`$ cc upc-twg850.c -o upc-twg850`
+`$ cc upc-twg8x0.c -o upc-twg8x0`
 
-Print WPA2 key and SSID for serial number `00939-907201352`
+Print WPA2 key and SSID for a TWG850 with serial number
+`00939-907201352`.
 
 ```
-$ ./upc-twg850 00939907201352
+$ ./upc-twg8x0 twg850 00939907201352
 00939-907201352  6   UPC009038  AALOMMAA
 ```
 Get serial numbers and WPA2 keys for SSID `UPC009065`
 
 <pre>
-$ ./upc-twg850 UPC009065
+$ ./upc-twg8x0 twg850 UPC009065
 [...]
 00939-907002034  1   UPC009065  IQVCGOKQ  
 00939-907101693  6   UPC009065  IUQQQCBY  
@@ -38,7 +39,7 @@ $ ./upc-twg850 UPC009065
 Same as above, but limit search to channel 6
 
 <pre>
-$ ./upc-twg850 UPC009065 6
+$ ./upc-twg8x0 twg850 UPC009065 6
 [...]
 00939-906500332  6   UPC009065  BDMWZWKE  
 00939-907101693  6   UPC009065  IUQQQCBY  
