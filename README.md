@@ -3,16 +3,17 @@
 Same as in the [Technicolor TC7200.U](https://haxx.in/upc-wifi/), the Wi-Fi SSID and
 password are derived from the device's serial number.
 However, for the TWG850-4U, there are around 8000-12000
-possible WPA2 keys for each UPC%06d network, as opposed
+possible WPA2 keys for each UPC%06d SSID and around 4000
+for the TWG870's UPC%07d SSID, as opposed
 to ~20 keys in the TC7200.U - still good enough for
-a dictionary attack though: `aircrack-ng` takes less than 5 seconds.
+a dictionary attack though: `aircrack-ng` takes less
+than 5 seconds.
 
-The WiFi channel number is also derived from the serial
-number, but in such a way that it's guaranteed to be either
-channel 1 or 6 (or 11, but the algorithm used almost never
-generates channel 11). The distribution is 1/3 channel 1,
-and 2/3 channel 6. The channel number printed on the bottom
-label is _not_ used!
+
+On both devices, the default WiFi channel number is also derived 
+from the serial number (1 or 6 for the TWG850-4U, and 1, 6 or 11
+on the TWG870). The channel number printed on the label of
+TWG850-4U units is **not** used!
 
 `$ cc upc-twg8x0.c -o upc-twg8x0`
 
