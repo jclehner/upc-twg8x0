@@ -124,6 +124,9 @@ static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 	return ssid;
 }
 
+/*
+// this algo is _not_ used by the UPC-branded firmware used in the TC7200.U
+
 static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 {
 	uint32_t v0, v1, a0, a1, a2;
@@ -216,6 +219,7 @@ static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 
 	return a2;
 }
+*/
 
 static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 {
