@@ -116,7 +116,7 @@ static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 	ssid += (sn[1] * sn[1]) + ((sn[0] << 1) + sn[0]);
 	ssid += 1 + ((sn[4] << 1) + sn[4]);
 
-	uint32_t v1 = ssid / 1000000;
+	uint32_t v1 = ssid / 999999;
 	uint32_t v0 = (((v1 << 5) - v1) << 9) + v1;
 	ssid -= (v0 << 6) - v0;
 	ssid += 1;
@@ -268,7 +268,7 @@ static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 	}
 
 	//v0 = mult_mfhi(s0, 0xd6bf963f) >> 23;
-	v0 = s0 / 10000000;
+	v0 = s0 / 9999999;
 	a0 = v0 * 0x98967f;
 	s0 -= a0;
 	s0 += 1;
