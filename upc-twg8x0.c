@@ -36,21 +36,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static uint32_t sra(int32_t x, uint32_t n)
-{
-	if (x < 0 && n > 0) {
-		return x >> n | ~(~0U >> n);
-	}
-
-	return x >> n;
-}
-
-static uint32_t mult_mfhi(uint64_t a, uint64_t b)
-{
-	uint64_t r = a * b;
-	return (r & 0xffffffff00000000ull) >> 32;
-}
-
 static uint32_t to_u32(char *s, size_t beg, size_t len)
 {
 	char c, *end;
@@ -73,55 +58,20 @@ static void split_sn(char *s, uint32_t *sn)
 	sn[4] = to_u32(s, 9, 5);
 }
 
-static void generate_upc_psk_source(uint32_t *sn, char *base)
-{
-	uint32_t v0, v1, a2;
-
-	v1 = ((((sn[1] << 5) - sn[1]) << 2) + sn[1]) << 3;
-	v1 += (((sn[2] << 2)) + sn[2]) << 1;
-	v1 += sn[3];
-
-	a2 = v1 * sn[4];
-	a2 = (((a2 << 1) + a2) << 2) - a2;
-
-	v0 = a2 / 100000000;
-	a2 -= (v0 * 0x5f5e100);
-
-	snprintf(base, 9, "%08d", a2);
-}
-
 static void generate_upc_psk(uint32_t *sn, char *psk)
 {
 	char base[9];
-	generate_upc_psk_source(sn, base);
+	snprintf(base, 9, "%08d", (sn[1] * 1000 + sn[2] * 10 + sn[3]) * sn[4] * 11 % 100000000);
 
 	int32_t i = 0;
-
-	do {
-		int32_t a1 = i + 1;
-		int32_t v0 = (i < 0) ? (i + 8) : (i + 1);
-		v0 = (sra(v0, 3) << 3);
-
-		uint32_t b = base[i] * base[a1 - v0];
-		uint32_t v1 = b / 26;
-		v0 = ((((v1 << 1) + v1) << 2) + v1) << 1;
-		psk[i] = (b - v0) + 'A';
-	} while (++i < 8);
+	for (i = 0; i < 8; i++) {
+		psk[i] = base[i] * base[(i + 1) % 8] % 26 + 0x41;
+	}
 }
 
 static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 {
-	uint32_t ssid = (sn[2] << 3) + sn[2];
-	ssid += (sn[3] << 10) - sn[3];
-	ssid += (sn[1] * sn[1]) + ((sn[0] << 1) + sn[0]);
-	ssid += 1 + ((sn[4] << 1) + sn[4]);
-
-	uint32_t v1 = ssid / 999999;
-	uint32_t v0 = (((v1 << 5) - v1) << 9) + v1;
-	ssid -= (v0 << 6) - v0;
-	ssid += 1;
-
-	return ssid;
+	return (sn[0] * 3 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1) % 9999999 + 1;
 }
 
 /*
@@ -129,194 +79,55 @@ static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 
 static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 {
-	uint32_t v0, v1, a0, a1, a2;
+	uint32_t a2;
 	uint32_t s0 = 4;
 
-	v1 = sn[1];
-
+	a2 = sn[1] * 2500000 + (sn[2] * 10 + sn[3]) * 6800 + sn[4];
 	if (s0 >= 4) {
-		v0 = v1 << 5;
-		v0 -= v1;
-
-		a0 = v0 << 6;
-		a0 -= v0;
-
-		a0 <<= 3;
-		a0 += v1;
-		v0 = a0 << 2;
-		a0 += v0;
-		a0 <<= 5;
-
-		v0 = sn[2];
-		v1 = v0 << 2;
-		v1 += v0;
-		v1 <<= 1;
-
-		v0 = sn[3];
-		v1 += v0;
-		v0 = v1 << 1;
-		v0 += v1;
-		v0 <<= 3;
-		v0 += v1;
-		v1 = v0 << 4;
-		v0 += v1;
-		v0 <<= 4;
-		a2 = a0 + v0;
-
-		v0 = sn[4];
-		a2 += v0;
-
-		v0 = 0xff8d8f20;
+		a2 += 0xff8d8f20; // -7500000
 	} else {
-		v0 = v1 << 5;
-		v0 -= v1;
-		a0 = v0 << 6;
-		a0 -= v0;
-		a0 <<= 3;
-		a0 += v1;
-		v0 = a0 << 2;
-		a0 += v0;
-		a0 <<= 5;
-
-		v0 = sn[2];
-		v1 = v0 << 2;
-		v1 += v0;
-		v1 <<= 1;
-
-		v0 = sn[3];
-		v1 += v0;
-		v0 = v1 << 1;
-		v0 += v1;
-		v0 <<= 3;
-		v0 += v1;
-		v1 = v0 << 4;
-		v0 += v1;
-		v0 <<= 4;
-		a2 = a0 + v0;
-
-		v0 = sn[4];
-		a2 += v0;
-
-		v0 = 0xffd9da60;
-
+		a2 += 0xffd9da60; // -2500000
 	}
 
-	a2 += v0;
-
-	a0 = sra(mult_mfhi(a2, 0x6b5fca6b), 22);
-	v0 = sra(a2, 31);
-	a0 -= v0;
-	v1 = a0 << 5;
-	v1 -= a0;
-	v0 = v1 << 6;
-	v0 -= v1;
-	v0 <<= 3;
-	v0 += a0;
-	v1 = v0 << 2;
-	v0 += v1;
-	v0 <<= 7;
-	a2 -= v0;
-
-	return a2;
+	return a2 % 10000000;
 }
 */
 
 static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 {
-	uint32_t v0, v1, a0, a1, a2, s0;
+	uint32_t s0;
 	uint32_t s1 = 0;
 
 	if (!s1) {
-		s0 = (sn[2] << 3) + sn[2];
-		s0 += (sn[3] << 10) - sn[3];
-		s0 += (sn[1] * sn[1]) + ((((sn[0] << 3) + sn[0]) << 2) + sn[0]);
-		s0 += (sn[4] << 1) + sn[4];
-		s0 += 1;
+		s0 = sn[0] * 37 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1;
 	} else if (s1 == 1) {
-		a0 = sn[4];
-		v0 = a0 << 2;
-		s0 = v0 + a0;
-		//v0 = sra(mult_mfhi(a0, 0x2c0b02c1), 4);
-		v0 = a0 / 93;
-		v1 = sra(a0, 31);
-		v0 -= v1;
-		v1 = v0 << 1;
-		v1 += v0;
-		v0 = v1 << 5;
-		v0 -= v1;
-		a0 -= v0;
-		v0 = a0 * a0;
-		s0 += v0;
-
-		v0 = sn[2];
-		a1 = v0 << 3;
-		a1 -= v0;
-
-		v1 = sn[3];
-		v0 = v1 << 11;
-		v0 -= v1;
-		a1 += v0;
-
-		v1 = sn[0];
-		v0 = v1 << 1;
-		v0 += v1;
-		v0 <<= 4;
-		v0 -= v1;
-
-		v1 = sn[1];
-		a0 = v1 * v1;
-		a2 = a0 * v1;
-		a0 = a2 + v0;
-		a1 += a0;
-		s0 += a1;
+		s0 = sn[0] * 47 + sn[1] * sn[1] * sn[1] + sn[2] * 7 + sn[3] * 2047 + sn[4] * 5 + (sn[4] % 93) * (sn[4] % 93);
 	}
-
-	//v0 = mult_mfhi(s0, 0xd6bf963f) >> 23;
-	v0 = s0 / 9999999;
-	a0 = v0 * 0x98967f;
-	s0 -= a0;
-	s0 += 1;
-
-	return s0;
+    
+	return s0 % 9999999 + 1;
 }
 
 static uint32_t generate_upc_channel_twg850(uint32_t *sn)
 {
-	uint32_t v0, v1, a0 = sn[4];
-	v0 = a0 / 3;
-	v1 = (v0 << 1) + v0;
-
-	if (a0 != v1) {
-		if ((a0 - (v0 << 1) + v0) ^ 1) {
+	switch (sn[4] % 3) {
+		case 0:
+			return 1;
+		case 1:
+			return 11;
+		case 2:
 			return 6;
-		}
-
-		return 11;
 	}
-
-	return 1;
 }
 
 static uint32_t generate_upc_channel_twg870(uint32_t *sn)
 {
-	uint32_t a0, v1, v0;
-
-	a0 = sn[4];
-	v0 = a0 / 3;
-	v1 = v0 << 1;
-	v1 += v0;
-	a0 -= v1;
-	a0 <<= 2;
-
-	switch (a0 / 4) {
+	switch (sn[4] % 3) {
 		case 0:
 			return 1;
 		case 1:
 			return 6;
 		case 2:
 			return 11;
-		default:
-			return 0;
 	}
 }
 
