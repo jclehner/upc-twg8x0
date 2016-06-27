@@ -22,7 +22,7 @@ Print WPA2 key and SSID for a TWG850 with serial number
 
 ```
 $ ./upc-twg8x0 twg850 00939907201352
-00939-907201352  6   UPC009038  AALOMMAA
+00939-907201352  6   UPC009065  AALOMMAA
 ```
 Get serial numbers and WPA2 keys for SSID `UPC009065`
 
