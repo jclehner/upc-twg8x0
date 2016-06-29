@@ -48,17 +48,57 @@ static uint32_t to_u32(char *s, size_t beg, size_t len)
 	return n;
 }
 
-// "11111233455555" -> { 11111, 2, 33, 4, 55555 }
-static void split_sn(char *s, uint32_t *sn)
+static void strrev(char *dest, const char *src)
 {
-	sn[0] = to_u32(s, 0, 5);
-	sn[1] = to_u32(s, 5, 1);
-	sn[2] = to_u32(s, 6, 2);
-	sn[3] = to_u32(s, 8, 1);
-	sn[4] = to_u32(s, 9, 5);
+	size_t i, len = strlen(src);
+	for (i = 0; i < len; ++i) {
+		dest[len - i - 1] = src[i];
+	}
+	dest[len] = '\0';
 }
 
-static void generate_upc_psk(uint32_t *sn, char *psk)
+static void split_sn(char *s, uint32_t *sn)
+{
+	size_t len = strlen(s);
+
+	if (len == 14) {
+		// "11111233455555" -> { 11111, 2, 33, 4, 55555 }
+
+		sn[5] = 0;
+
+		sn[0] = to_u32(s, 0, 5);
+		sn[1] = to_u32(s, 5, 1);
+		sn[2] = to_u32(s, 6, 2);
+		sn[3] = to_u32(s, 8, 1);
+		sn[4] = to_u32(s, 9, 5);
+	} else if (len == 12) {
+		// "SAAP12345678" -> { 8765, 4, 32, 1, 33905 }
+		// "SBAP12345678" -> { 8765, 4, 32, 1, 33915 }
+		// "SAPP12345678" -> { 8765, 4, 32, 1, 35405 }
+
+		char rev[13];
+		strrev(rev, s);
+
+		sn[5] = 1;
+
+		sn[0] = to_u32(rev, 0, 4);
+		sn[1] = to_u32(rev, 4, 1);
+		sn[2] = to_u32(rev, 5, 2);
+		sn[3] = to_u32(rev, 7, 1);
+
+		uint32_t v1 = 0;
+		size_t i = 8;
+
+		for (; i < 12; ++i) {
+			uint32_t v0 = ((v1 << 2) + v1) << 1;
+			v1 = v0 + (rev[i] - '0');
+		}
+
+		sn[4] = v1;
+	}
+}
+
+static void generate_upc_psk_twg8x0(uint32_t *sn, char *psk)
 {
 	char base[9];
 	snprintf(base, 9, "%08d", (sn[1] * 1000 + sn[2] * 10 + sn[3]) * sn[4] * 11 % 100000000);
@@ -74,9 +114,9 @@ static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 	return (sn[0] * 3 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1) % 9999999 + 1;
 }
 
+
 /*
 // this algo is _not_ used by the UPC-branded firmware used in the TC7200.U
-
 static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 {
 	uint32_t a2;
@@ -103,7 +143,7 @@ static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 	} else if (s1 == 1) {
 		s0 = sn[0] * 47 + sn[1] * sn[1] * sn[1] + sn[2] * 7 + sn[3] * 2047 + sn[4] * 5 + (sn[4] % 93) * (sn[4] % 93);
 	}
-    
+
 	return s0 % 9999999 + 1;
 }
 
@@ -131,12 +171,24 @@ static uint32_t generate_upc_channel_twg870(uint32_t *sn)
 	}
 }
 
+static uint32_t generate_upc_channel_dummy(uint32_t *sn)
+{
+	return 0;
+}
+
+static void generate_upc_psk_dummy(uint32_t *sn, char *psk)
+{
+	strcpy(psk, "--------");
+}
+
 static uint32_t (*generate_upc_ssid)(uint32_t *) = NULL;
 static uint32_t (*generate_upc_channel)(uint32_t *) = NULL;
+static void (*generate_upc_psk)(uint32_t *, char *) = NULL;
 static const char *ssid_fmt = NULL;
 
-static uint32_t sn0_twg850[] = { 913, 926, 939, 0 };
-static uint32_t sn0_twg870[] = { 955, 0 };
+static uint32_t prefixes_twg850[] = { 913, 926, 939, 0 };
+static uint32_t prefixes_twg870[] = { 955, 0 };
+static uint32_t prefixes_tc7200[] = { 33905, 33915, 35405 };
 
 static void print(uint32_t *sn, uint32_t ssid, uint32_t ch)
 {
@@ -144,7 +196,31 @@ static void print(uint32_t *sn, uint32_t ssid, uint32_t ch)
 		ch = generate_upc_channel(sn);
 	}
 
-	printf("%05d-%d%02d%d%05d  ", sn[0], sn[1], sn[2], sn[3], sn[4]);
+	if (sn[5] == 0) {
+		printf("%05d-%d%02d%d%05d  ", sn[0], sn[1], sn[2], sn[3], sn[4]);
+	} else if (sn[5] == 1) {
+		switch (sn[4]) {
+			case 33905:
+				printf("SAAP");
+				break;
+			case 33915:
+				printf("SABP");
+				break;
+			case 35405:
+				printf("SAPP");
+				break;
+			default:
+				printf("%05d-", sn[4]);
+		}
+
+		char snbuf[32] = { 0 };
+		char rev[32] = { 0 };
+
+		snprintf(snbuf, 31, "%04d%d%02d%d", sn[0], sn[1], sn[2], sn[3]);
+		strrev(rev, snbuf);
+		printf("%s  ", rev);
+	}
+
 	printf("%-2d  ", ch);
 	printf(ssid_fmt, ssid);
 
@@ -167,26 +243,57 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-	uint32_t *sn0 = NULL;
+	uint32_t *prefixes = NULL;
 
 	if (!strcmp(argv[1], "twg850")) {
 		ssid_fmt = "UPC%06d  ";
-		sn0 = sn0_twg850;
+		prefixes = prefixes_twg850;
 		generate_upc_ssid = &generate_upc_ssid_twg850;
 		generate_upc_channel = &generate_upc_channel_twg850;
+		generate_upc_psk = &generate_upc_psk_twg8x0;
 	} else if (!strcmp(argv[1], "twg870")) {
 		ssid_fmt = "UPC%07d  ";
-		sn0 = sn0_twg870;
+		prefixes = prefixes_twg870;
 		generate_upc_ssid = &generate_upc_ssid_twg870;
 		generate_upc_channel = &generate_upc_channel_twg870;
+		generate_upc_psk = &generate_upc_psk_twg8x0;
+	} else if (!strcmp(argv[1], "tc7200")) {
+		ssid_fmt = "UPC%07d  ";
+		prefixes = prefixes_tc7200;
+		// 5 Ghz SSID
+		generate_upc_ssid = &generate_upc_ssid_twg870;
+		generate_upc_channel = &generate_upc_channel_dummy;
+		generate_upc_psk = &generate_upc_psk_dummy;
 	} else {
 		fprintf(stderr, "error: unknown device %s\n", argv[1]);
 		return 1;
 	}
 
-	uint32_t sn[5] = { 0 };
+	// sn[5] is (ab)used to store the serial number type:
+	// 0 = TWG8x0
+	// 1 = TC7200.U (the TC7200.20 uses serial numbers like the TWG8x0)
+	uint32_t sn[6] = { 0 };
+	uint32_t *sn0, *sn1, *sn2, *sn3, *sn4;
+
+	if (prefixes == prefixes_tc7200) {
+		sn[5] = 1;
+		sn0 = sn + 4;
+		sn1 = sn + 3;
+		sn2 = sn + 2;
+		sn3 = sn + 1;
+		sn4 = sn;
+	} else {
+		sn0 = sn;
+		sn1 = sn + 1;
+		sn2 = sn + 2;
+		sn3 = sn + 3;
+		sn4 = sn + 4;
+	}
+
 	uint32_t ssid = 0;
 	uint32_t ch = 0;
+
+	size_t snlen = strlen(argv[2]);
 
 	if (sscanf(argv[2], "UPC%d", &ssid) == 1) {
 		if (argc == 4) {
@@ -195,13 +302,13 @@ int main(int argc, char **argv)
 
 		unsigned i = 0;
 
-		for (; sn0[i]; ++i) {
-			sn[0] = sn0[i];
+		for (; prefixes[i]; ++i) {
+			*sn0 = prefixes[i];
 
-			for (sn[1] = 0; sn[1] <= 9; ++sn[1])
-			for (sn[2] = 0; sn[2] <= 99; ++sn[2])
-			for (sn[3] = 0; sn[3] <= 9; ++sn[3])
-			for (sn[4] = 0; sn[4] <= 9999; ++sn[4]) {
+			for (*sn1 = 0; *sn1 <= 9; *sn1 += 1)
+			for (*sn2 = 0; *sn2 <= 99; *sn2 += 1)
+			for (*sn3 = 0; *sn3 <= 9; *sn3 += 1)
+			for (*sn4 = 0; *sn4 <= 9999; *sn4 += 1) {
 				if (ssid != generate_upc_ssid(sn)) {
 					continue;
 				}
@@ -213,7 +320,7 @@ int main(int argc, char **argv)
 				print(sn, ssid, ch);
 			}
 		}
-	} else if (strlen(argv[2]) == 14) {
+	} else if (snlen == 12 || snlen == 14) {
 		split_sn(argv[2], sn);
 		ssid = generate_upc_ssid(sn);
 		print(sn, ssid, 0);
