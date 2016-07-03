@@ -111,9 +111,17 @@ static void generate_upc_psk_twg8x0(uint32_t *sn, char *psk)
 
 static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 {
-	return (sn[0] * 3 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1) % 9999999 + 1;
-}
+	uint32_t s1 = 0;
+	uint32_t ssid = 0;
 
+	if (s1) {
+		ssid = sn[0] * 4 + sn[1] * sn[1] * sn[1] + sn[2] * 7 + sn[3] * 2047 + (sn[4] % 93) * (sn[4] % 93);
+	} else {
+		ssid = sn[0] * 3 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1;
+	}
+
+	return ssid % 9999999 + 1;
+}
 
 /*
 // this algo is _not_ used by the UPC-branded firmware used in the TC7200.U
