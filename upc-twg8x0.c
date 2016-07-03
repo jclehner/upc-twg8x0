@@ -36,6 +36,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static int opt_alt_algo = 0;
+
 static uint32_t to_u32(char *s, size_t beg, size_t len)
 {
 	char c, *end;
@@ -111,7 +113,7 @@ static void generate_upc_psk_twg8x0(uint32_t *sn, char *psk)
 
 static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 {
-	uint32_t s1 = 0;
+	uint32_t s1 = !opt_alt_algo ? 0 : 1;
 	uint32_t ssid = 0;
 
 	if (s1) {
@@ -128,7 +130,7 @@ static uint32_t generate_upc_ssid_twg850(uint32_t *sn)
 static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 {
 	uint32_t a2;
-	uint32_t s0 = 4;
+	uint32_t s0 = !opt_alt_algo ? 4 : 0;
 
 	a2 = sn[1] * 2500000 + (sn[2] * 10 + sn[3]) * 6800 + sn[4];
 	if (s0 >= 4) {
@@ -144,7 +146,7 @@ static uint32_t generate_upc_ssid_tc7200(uint32_t *sn)
 static uint32_t generate_upc_ssid_twg870(uint32_t *sn)
 {
 	uint32_t s0;
-	uint32_t s1 = 0;
+	uint32_t s1 = !opt_alt_algo ? 0 : 1;
 
 	if (!s1) {
 		s0 = sn[0] * 37 + sn[1] * sn[1] + sn[2] * 9 + sn[3] * 1023 + sn[4] * 3 + 1;
@@ -239,6 +241,11 @@ static void print(uint32_t *sn, uint32_t ssid, uint32_t ch)
 	printf("\n");
 }
 
+static int strbeg(const char *haystack, const char *needle)
+{
+	return strstr(haystack, needle) == haystack;
+}
+
 static void usage()
 {
 	fprintf(stderr, "usage: upc-twg8x0 <device> <<serial> | <ssid> [<channel>]>\n");
@@ -253,19 +260,19 @@ int main(int argc, char **argv)
 
 	uint32_t *prefixes = NULL;
 
-	if (!strcmp(argv[1], "twg850")) {
+	if (strbeg(argv[1], "twg850")) {
 		ssid_fmt = "UPC%06d  ";
 		prefixes = prefixes_twg850;
 		generate_upc_ssid = &generate_upc_ssid_twg850;
 		generate_upc_channel = &generate_upc_channel_twg850;
 		generate_upc_psk = &generate_upc_psk_twg8x0;
-	} else if (!strcmp(argv[1], "twg870")) {
+	} else if (strbeg(argv[1], "twg870")) {
 		ssid_fmt = "UPC%07d  ";
 		prefixes = prefixes_twg870;
 		generate_upc_ssid = &generate_upc_ssid_twg870;
 		generate_upc_channel = &generate_upc_channel_twg870;
 		generate_upc_psk = &generate_upc_psk_twg8x0;
-	} else if (!strcmp(argv[1], "tc7200")) {
+	} else if (strbeg(argv[1], "tc7200")) {
 		ssid_fmt = "UPC%07d  ";
 		prefixes = prefixes_tc7200;
 		// 5 Ghz SSID
@@ -275,6 +282,10 @@ int main(int argc, char **argv)
 	} else {
 		fprintf(stderr, "error: unknown device %s\n", argv[1]);
 		return 1;
+	}
+
+	if (strstr(argv[1], "_alt")) {
+		opt_alt_algo = 1;
 	}
 
 	// sn[5] is (ab)used to store the serial number type:
